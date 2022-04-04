@@ -8,6 +8,21 @@ targetNodes:
   - nginxphp
   - nginx-ruby
   - storage
+  - tomcat
+  - postgresql
+  - glassfish
+  - payara
+  - jetty
+  - springboot
+  - nodejs
+  - litespeedphp
+  - lemp
+  - golang
+  - mysql
+  - mariadb
+  - perconadb
+  - mongodb
+  - redis
 description:
   short: Add, remove FTP user (to Home Directory [webroot/]). User password reset.
   en: Add, remove and manage multiple FTP users' accounts, defining the separate server
@@ -21,12 +36,17 @@ menu:
   caption: Add new FTP user
   action: addUser
   successText: New user was added.
-- confirmText: You are going to edit FTP directory. Continue?
-  settings: editSettings
-  loadingText: Performing FTP directory editing...
-  caption: Edit user FTP directory
-  action: editUser
-  successText: The FTP directory was changed.
+#- confirmText: You are going to edit FTP directory. Continue?
+#  settings: editSettings
+#  loadingText: Performing FTP directory editing...
+#  caption: Edit user FTP directory
+#  action: editUser
+#  successText: The FTP directory was changed.
+- confirmText: You are going to list the FTP users. Continue?
+#  settings: listSettings
+  caption: List FTP users
+  action: listUser
+  successText: Users listed.
 - confirmText: You are going to delete the user. Would you like to continue?
   settings: delSettings
   loadingText: Performing user deletion...
@@ -54,10 +74,10 @@ settings:
       caption: 'Password:'
       type: string
       required: true
-    - default: "/"
+    - name: homepath
+      default: "/"
       regexText: Incorrect Home Directory
-      regex: "^(/)?([a-zA-Z\\._\\-0-9])+?(/)?$"
-      name: homepath
+      regex: "^(?!/../)(/)([a-zA-Z\\_\\0-9/])+?(/)?$"
       caption: 'Home Directory [webroot/]:'
       type: string
       required: true
@@ -69,27 +89,29 @@ settings:
       caption: 'Username:'
       type: string
       required: true
-    - name: removedata
-      value: false
-      caption: Delete the data
-      type: checkbox
-      required: true
-      checked: false
-  editSettings:
+#    - name: removedata
+#      value: false
+#      caption: Delete the data
+#     type: checkbox
+#      required: true
+#      checked: false
+  listSettings:
     fields:
-    - regexText: Incorrect Username. Alphanumeric input only.
-      regex: "^[a-z][-a-z0-9]*$"
-      name: username
-      caption: 'Username:'
-      type: string
-      required: true
-    - default: "/"
-      regexText: Incorrect Home Directory
-      regex: "^(/)?([a-zA-Z\\._\\-0-9])+?(/)?$"
-      name: homepath
-      caption: 'Home Directory [webroot/]:'
-      type: string
-      required: true
+#  editSettings:
+#    fields:
+#    - regexText: Incorrect Username. Alphanumeric input only.
+#      regex: "^[a-z][-a-z0-9]*$"
+#      name: username
+#      caption: 'Username:'
+#      type: string
+#      required: true
+#    - default: "/"
+#      regexText: Incorrect Home Directory
+#      regex: "^(?!/../)(/)([a-zA-Z\\_\\0-9/])+?(/)?$"
+#      name: homepath
+#      caption: 'Home Directory [webroot/]:'
+#      type: string
+#      required: true
   resetSettings:
     fields:
     - regexText: Incorrect Username. Alphanumeric input only.
@@ -112,20 +134,35 @@ actions:
   addUser:
     cmd [${targetNodes[0].nodeType}]:
     - if [ "${targetNodes.nodeType}" == "storage" ]; then defaultPath="/var/ftp/"; else defaultPath="/var/ftp/webroot"; fi
-    - id ${this.username} > /dev/null 2>&1  ||  { /usr/sbin/adduser -o --home ${defaultPath}/${this.homepath} --shell /bin/false --uid 700 ${this.username}; echo '${this.username}:${this.password}' | chpasswd; }
+    - id ${this.username} > /dev/null 2>&1  ||  { /usr/sbin/adduser -o --home ${defaultPath}${this.homepath} --shell /bin/false --uid 700 ${this.username}; echo '${this.username}:${this.password}' | chpasswd; }
     user: root
-  editUser:
-    cmd [${targetNodes[0].nodeType}]:
-    - if [ "${targetNodes.nodeType}" == "storage" ]; then defaultPath="/var/ftp/"; else defaultPath="/var/ftp/webroot"; fi
-    - usermod -d ${defaultPath}/${this.homepath} ${this.username} > /dev/null 2>&1;
-      mkdir -p ${defaultPath}${this.homepath}; chown ${this.username} /var/ftp/webroot/${this.homepath}
-      2>&1 > /dev/null
-    user: root
+#  editUser:
+#    cmd [${targetNodes[0].nodeType}]:
+#    - if [ "${targetNodes.nodeType}" == "storage" ]; then defaultPath="/var/ftp/"; else defaultPath="/var/ftp/webroot"; fi
+#    - usermod -d ${defaultPath}${this.homepath} ${this.username} > /dev/null 2>&1;
+#      mkdir -p ${defaultPath}${this.homepath}; chown ${this.username} /var/ftp/webroot${this.homepath}
+#      2>&1 > /dev/null
+#    user: root
   delUser:
     cmd [${targetNodes[0].nodeType}]:
-    - if [ '${this.removedata}' == 'true' ]; then userdel -fr ${this.username} > /dev/null
-      2>&1; else userdel -f ${this.username} > /dev/null 2>&1; fi
+    - if [[ $(id -u ${this.username}) -eq 700 && $(cat /etc/passwd | grep ${this.username} | head -n1 | awk -F ":" '{print $4}') -ne 700 ]]; then userdel -f ${this.username} > /dev/null 2>&1; else echo "Invalid user"; exit 1; fi;
     user: root
+  listUser:
+    cmd [${targetNodes[0].nodeType}]:
+#    - cat /etc/passwd | grep -i ftp | grep -v "FTP User"
+    - for user in $(cat /etc/passwd | grep -i ftp | grep -v "FTP User"); do echo -e "\n $user"; done;
+#   register: message
+    user: root
+    return:
+      type: success
+      message: ${response.out}
+#      script: |
+#        return {'message': message.replace()}
+# - appendMessage: ${response.out}
+
+#   return:
+#     type: success
+#     message: ${message.stdout}
   resetUser:
     cmd [${targetNodes[0].nodeType}]:
     - echo '${this.username}:${this.password}' | chpasswd
