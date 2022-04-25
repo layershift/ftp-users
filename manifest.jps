@@ -71,10 +71,10 @@ settings:
       type: string
       required: true
     - name: homepath
-      default: "/"
+      default: "/webroot/"
       regexText: Incorrect Home Directory
       regex: "^(?!/../)(/)([a-zA-Z\\_\\0-9/])+?(/)?$|^(/)$"
-      caption: 'Home Directory [var/ftp]:'
+      caption: 'Home Directory [var/ftp/webroot/]:'
       type: string
       required: true
 
