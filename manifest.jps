@@ -23,6 +23,7 @@ targetNodes:
   - perconadb
   - mongodb
   - redis
+  - nginxphp-dockerized
 
 description:
   short: Add, remove FTP user (to the FTP directory [/var/ftp/]). User password reset.
